@@ -10,10 +10,11 @@ def from_json(file_path):
     dest_connection_string = data['dest_connection_string']
     s3_bucket_name = data['s3_bucket_name']
     status_table_name = data['status_table_name']
+    redshift_role = data['redshift_role']
 
     job_configs = []
 
     for job in data[u'jobs']:
-        job_configs.append(JobConfig(source_connection_string, dest_connection_string, job['source_table_name'], job['dest_table_name'], job['timestamp_col'], s3_bucket_name, status_table_name))
+        job_configs.append(JobConfig(source_connection_string, dest_connection_string, job['source_table_name'], job['dest_table_name'], job['timestamp_col'], s3_bucket_name, status_table_name, redshift_role))
 
     return job_configs
