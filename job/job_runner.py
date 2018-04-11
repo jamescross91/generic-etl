@@ -1,15 +1,14 @@
 import datetime
+import logging
 
 import pandas as pd
 from sqlalchemy import create_engine
 from io import BytesIO
 import boto3
 import uuid
-
-import log
 from job.redshift import get_last_upper_bound
 
-logger = log.configure_logging('root')
+logger = logging.getLogger('root')
 
 
 def run_job(job_config):
@@ -21,7 +20,7 @@ def run_job(job_config):
 
 
 def __to_s3(job_config, last_upper_bound, new_upper_bound):
-    engine = create_engine(job_config.connection_string, echo=False)
+    engine = create_engine(job_config.source_connection_string, echo=False)
     sql = __generate_query(job_config.source_table_name, job_config.timestamp_col, last_upper_bound, new_upper_bound)
     logger.info("Will execute " + sql)
     df = pd.read_sql(sql, engine)
@@ -34,8 +33,11 @@ def __to_s3(job_config, last_upper_bound, new_upper_bound):
 
 
 def __generate_query(source_table_name, timestamp_col, timestamp_lower_bound, timestamp_upper_bound):
+    if timestamp_lower_bound is 0:
+        return "Select * from %s where %s <= \'%s\'" % (source_table_name, timestamp_col, str(timestamp_upper_bound))
+
     return "Select * from %s where %s > \'%s\' and %s <= \'%s\'" % (
-        source_table_name, timestamp_col, timestamp_lower_bound, timestamp_col, timestamp_upper_bound)
+        source_table_name, timestamp_col, timestamp_lower_bound, timestamp_col, str(timestamp_upper_bound))
 
 
 def __generate_file_name(source_table_name, timestamp_upper_bound):

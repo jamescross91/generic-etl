@@ -1,8 +1,8 @@
+import logging
+
 import psycopg2
 
-import log
-
-logger = log.configure_logging('root')
+logger = logging.getLogger('root')
 
 
 def get_last_upper_bound(job_config):
@@ -15,7 +15,7 @@ def get_last_upper_bound(job_config):
     cursor.execute(query)
     res = cursor.fetchall()
 
-    if len(res) == 0:
+    if res[0][0] is None:
         logger.warn("No status found for " + job_config.source_table_name + " will load from scratch")
         return 0
 
