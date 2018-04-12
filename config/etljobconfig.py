@@ -1,4 +1,4 @@
-class JobConfig:
+class ETLJobConfig:
     def __init__(self, dest_connection_string, source_table_name, dest_table_name, timestamp_col, status_table_name,
                  redshift_role):
         self.dest_connection_string = dest_connection_string

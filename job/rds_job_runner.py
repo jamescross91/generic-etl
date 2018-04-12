@@ -12,6 +12,7 @@ logger = logging.getLogger('root')
 
 
 def run_rds_job(job_config):
+    logger.info("Running RDS ETL for " + job_config.source_table_name)
     last_upper_bound = get_last_upper_bound(job_config)
     new_upper_bound = datetime.datetime.now()
 
@@ -20,7 +21,7 @@ def run_rds_job(job_config):
 
     update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
 
-    print()
+    logger.info("################################### COMPLETE ###################################")
 
 
 def __to_s3(job_config, last_upper_bound, new_upper_bound):

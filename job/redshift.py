@@ -8,7 +8,7 @@ TEMP_TABLE_NAME = 'temp_table'
 
 def get_last_upper_bound(job_config):
     query = __generate_status_query(job_config.status_table_name, job_config.source_table_name)
-    res = __execute_query(job_config.dest_connection_string, query)
+    res = execute_query(job_config.dest_connection_string, query)
 
     if res[0][0] is None:
         logger.warn("No status found for " + job_config.source_table_name + " will load from scratch")
@@ -28,19 +28,19 @@ def update_upper_bound(job_config, new_upper_bound, is_first_run=False):
         query = __generate_update_bounds_query(job_config.status_table_name, job_config.source_table_name,
                                                new_upper_bound)
 
-    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+    execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
 
 def copy_to_redshift(job_config, target_table, source_bucket, file_name):
     query = __generate_copy_query(target_table, source_bucket, file_name,
                                   job_config.redshift_role)
 
-    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+    execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
 
 def create_temp_table(job_config):
     query = __generate_create_temp_table_query(job_config.dest_table_name)
-    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+    execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
     return TEMP_TABLE_NAME
 
@@ -48,15 +48,15 @@ def create_temp_table(job_config):
 def insert_from_temp_table(job_config, lower_bound, upper_bound):
     query = __generate_insert_from_temp_table(job_config.dest_table_name, TEMP_TABLE_NAME, job_config.timestamp_col,
                                               lower_bound, upper_bound)
-    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+    execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
 
 def drop_temp_table(job_config):
     query = __generate_drop_temp_table_query()
-    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+    execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
 
-def __execute_query(connection_string, query, fetch_data=True):
+def execute_query(connection_string, query, fetch_data=True):
     connection_string = connection_string
     conn = psycopg2.connect(connection_string)
     cursor = conn.cursor()

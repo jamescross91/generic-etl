@@ -2,6 +2,7 @@ import json
 
 from config.rdsjobconfig import RDSJobConfig
 from config.s3jobconfig import S3JobConfig
+from config.sqljobconfig import SQLJobConfig
 
 
 def from_json(file_path):
@@ -14,6 +15,7 @@ def from_json(file_path):
 
     rds_jobs = []
     s3_jobs = []
+    destination_sql_jobs = []
 
     for rds_job in data['rds_jobs']:
         rds_jobs.append(RDSJobConfig(source_connection_string, dest_connection_string, rds_job['source_table_name'],
@@ -26,7 +28,11 @@ def from_json(file_path):
                                    s3_job['dest_table_name'], s3_job['timestamp_col'], status_table_name,
                                    redshift_role))
 
+    for destination_sql_job in data['destination_sql_jobs']:
+        destination_sql_jobs.append(SQLJobConfig(dest_connection_string, destination_sql_job['sql_statements']))
+
     return {
         "rds_jobs": rds_jobs,
-        "s3_jobs": s3_jobs
+        "s3_jobs": s3_jobs,
+        "destination_sql_jobs": destination_sql_jobs
     }
