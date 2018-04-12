@@ -3,6 +3,7 @@ import logging
 import psycopg2
 
 logger = logging.getLogger('root')
+TEMP_TABLE_NAME = 'temp_table'
 
 
 def get_last_upper_bound(job_config):
@@ -30,10 +31,28 @@ def update_upper_bound(job_config, new_upper_bound, is_first_run=False):
     __execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
 
-def copy_to_redshift(job_config, file_name):
-    query = __generate_copy_query(job_config.dest_table_name, job_config.s3_bucket_name, file_name,
+def copy_to_redshift(job_config, target_table, source_bucket, file_name):
+    query = __generate_copy_query(target_table, source_bucket, file_name,
                                   job_config.redshift_role)
 
+    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+
+
+def create_temp_table(job_config):
+    query = __generate_create_temp_table_query(job_config.dest_table_name)
+    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+
+    return TEMP_TABLE_NAME
+
+
+def insert_from_temp_table(job_config, lower_bound, upper_bound):
+    query = __generate_insert_from_temp_table(job_config.dest_table_name, TEMP_TABLE_NAME, job_config.timestamp_col,
+                                              lower_bound, upper_bound)
+    __execute_query(job_config.dest_connection_string, query, fetch_data=False)
+
+
+def drop_temp_table(job_config):
+    query = __generate_drop_temp_table_query()
     __execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
 
@@ -41,8 +60,8 @@ def __execute_query(connection_string, query, fetch_data=True):
     connection_string = connection_string
     conn = psycopg2.connect(connection_string)
     cursor = conn.cursor()
-    cursor.execute(query)
     logger.info("Will execute " + query)
+    cursor.execute(query)
 
     data = {}
     if fetch_data:
@@ -65,8 +84,26 @@ def __generate_status_query(status_table_name, source_table_name):
 
 
 def __generate_update_bounds_query(status_table_name, source_table_name, upper_bound):
-    return "UPDATE %s SET latest_load= \'%s\' WHERE source_table_name = \'%s\'" % (status_table_name, upper_bound, source_table_name)
+    return "UPDATE %s SET latest_load= \'%s\' WHERE source_table_name = \'%s\'" % (
+        status_table_name, upper_bound, source_table_name)
 
 
 def __generate_insert_bounds_query(status_table_name, source_table_name, upper_bound):
     return "INSERT INTO %s VALUES(\'%s\', \'%s\')" % (status_table_name, source_table_name, upper_bound)
+
+
+def __generate_create_temp_table_query(dest_table_name):
+    return "CREATE TABLE %s(like %s)" % (TEMP_TABLE_NAME, dest_table_name)
+
+
+def __generate_drop_temp_table_query():
+    return "DROP TABLE IF EXISTS " + TEMP_TABLE_NAME
+
+
+def __generate_insert_from_temp_table(dest_table_name, temp_table_name, timestamp_col, lower_bound, upper_bound):
+    if lower_bound is 0:
+        return "INSERT INTO %s SELECT * FROM %s WHERE %s <= \'%s\'" % (
+            dest_table_name, temp_table_name, timestamp_col, upper_bound)
+
+    return "INSERT INTO %s SELECT * FROM %s WHERE %s > \'%s\' and %s <= \'%s\'" % (
+        dest_table_name, temp_table_name, timestamp_col, lower_bound, timestamp_col, upper_bound)

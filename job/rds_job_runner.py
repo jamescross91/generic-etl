@@ -11,12 +11,12 @@ from job.redshift import get_last_upper_bound, copy_to_redshift, update_upper_bo
 logger = logging.getLogger('root')
 
 
-def run_job(job_config):
+def run_rds_job(job_config):
     last_upper_bound = get_last_upper_bound(job_config)
     new_upper_bound = datetime.datetime.now()
 
     file_name = __to_s3(job_config, last_upper_bound, new_upper_bound)
-    copy_to_redshift(job_config, file_name)
+    copy_to_redshift(job_config, job_config.dest_table_name, job_config.s3_bucket_name, file_name)
 
     update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
 

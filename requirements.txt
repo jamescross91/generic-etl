@@ -2,4 +2,4 @@ boto3
 SQLAlchemy
 pandas
 mysql-connector
-import psycopg2
+psycopg2
