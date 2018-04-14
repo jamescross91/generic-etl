@@ -13,6 +13,10 @@ logger = logging.getLogger('root')
 
 def run_rds_job(job_config):
     logger.info("Running RDS ETL for " + job_config.source_table_name)
+
+    logger.info("Running setup statements if any")
+    __execute_sql_statements(job_config.run_before, job_config.dest_connection_string)
+
     last_upper_bound = get_last_upper_bound(job_config)
     new_upper_bound = datetime.datetime.now()
 
@@ -23,8 +27,10 @@ def run_rds_job(job_config):
     if records_to_process > 0:
         file_name = __to_s3(job_config, df, last_upper_bound)
         copy_to_redshift(job_config, job_config.dest_table_name, job_config.s3_bucket_name, file_name)
-        __execute_sql_statements(job_config)
         update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
+
+    logger.info("Running teardown statements if any")
+    __execute_sql_statements(job_config.run_after, job_config.dest_connection_string)
 
     logger.info("################################### COMPLETE ###################################")
 
@@ -40,9 +46,9 @@ def __to_s3(job_config, df, new_upper_bound):
     return file_name
 
 
-def __execute_sql_statements(job_config):
-    for statement in job_config.sql_statements:
-        execute_query(job_config.dest_connection_string, statement)
+def __execute_sql_statements(statements, connection_string):
+    for statement in statements:
+        execute_query(connection_string, statement, fetch_data=False)
 
 
 def __read_from_source(job_config, last_upper_bound, new_upper_bound):
