@@ -4,7 +4,7 @@ import logging
 import boto3
 
 from job.redshift import get_last_upper_bound, create_temp_table, copy_to_redshift, insert_from_temp_table, \
-    drop_temp_table, update_upper_bound
+    drop_temp_table, update_upper_bound, execute_query
 
 logger = logging.getLogger('root')
 
@@ -14,13 +14,21 @@ def run_s3_job(job_config):
     new_upper_bound = datetime.datetime.now()
 
     files_to_process = __get_files_in_source_bucket(job_config)
-    logger.info("Found " + str(sum(1 for _ in files_to_process)) + " file(s) to process")
+    files_to_process = sum(1 for _ in files_to_process)
+    logger.info("Found " + str(files_to_process) + " file(s) to process")
 
-    for s3_object in files_to_process:
-        logger.info("Processing " + s3_object.key)
-        __process_one_file(job_config, s3_object.key, last_upper_bound, new_upper_bound)
+    if files_to_process > 0:
+        for s3_object in files_to_process:
+            logger.info("Processing " + s3_object.key)
+            __process_one_file(job_config, s3_object.key, last_upper_bound, new_upper_bound)
 
-    update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
+        __execute_sql_statements(job_config)
+        update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
+
+
+def __execute_sql_statements(job_config):
+    for statement in job_config.sql_statements:
+        execute_query(job_config.dest_connection_string, statement)
 
 
 def __process_one_file(job_config, filename, lower_bound, upper_bound):

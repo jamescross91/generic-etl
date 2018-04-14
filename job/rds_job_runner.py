@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from io import BytesIO
 import boto3
 import uuid
-from job.redshift import get_last_upper_bound, copy_to_redshift, update_upper_bound
+from job.redshift import get_last_upper_bound, copy_to_redshift, update_upper_bound, execute_query
 
 logger = logging.getLogger('root')
 
@@ -16,20 +16,20 @@ def run_rds_job(job_config):
     last_upper_bound = get_last_upper_bound(job_config)
     new_upper_bound = datetime.datetime.now()
 
-    file_name = __to_s3(job_config, last_upper_bound, new_upper_bound)
-    copy_to_redshift(job_config, job_config.dest_table_name, job_config.s3_bucket_name, file_name)
+    df = __read_from_source(job_config, last_upper_bound, new_upper_bound)
+    records_to_process = len(df.index)
+    logger.info("Received " + str(records_to_process) + " records to store in S3")
 
-    update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
+    if records_to_process > 0:
+        file_name = __to_s3(job_config, df, last_upper_bound)
+        copy_to_redshift(job_config, job_config.dest_table_name, job_config.s3_bucket_name, file_name)
+        __execute_sql_statements(job_config)
+        update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
 
     logger.info("################################### COMPLETE ###################################")
 
 
-def __to_s3(job_config, last_upper_bound, new_upper_bound):
-    engine = create_engine(job_config.source_connection_string, echo=False)
-    sql = __generate_query(job_config.source_table_name, job_config.timestamp_col, last_upper_bound, new_upper_bound)
-    logger.info("Will execute " + sql)
-    df = pd.read_sql(sql, engine)
-    logger.info("Received " + str(len(df.index)) + " records to store in S3")
+def __to_s3(job_config, df, new_upper_bound):
     csv_buffer = BytesIO()
     df.to_csv(csv_buffer, encoding='utf-8', index=False)
     s3_resource = boto3.resource('s3')
@@ -38,6 +38,19 @@ def __to_s3(job_config, last_upper_bound, new_upper_bound):
     s3_resource.Object(job_config.s3_bucket_name, file_name).put(Body=csv_buffer.getvalue())
 
     return file_name
+
+
+def __execute_sql_statements(job_config):
+    for statement in job_config.sql_statements:
+        execute_query(job_config.dest_connection_string, statement)
+
+
+def __read_from_source(job_config, last_upper_bound, new_upper_bound):
+    engine = create_engine(job_config.source_connection_string, echo=False)
+    sql = __generate_query(job_config.source_table_name, job_config.timestamp_col, last_upper_bound, new_upper_bound)
+    logger.info("Will execute " + sql)
+    df = pd.read_sql(sql, engine)
+    return df
 
 
 def __generate_query(source_table_name, timestamp_col, timestamp_lower_bound, timestamp_upper_bound):
