@@ -19,10 +19,10 @@ def run_s3_job(job_config):
     new_upper_bound = datetime.datetime.now()
 
     files_to_process = __get_files_in_source_bucket(job_config)
-    files_to_process = sum(1 for _ in files_to_process)
-    logger.info("Found " + str(files_to_process) + " file(s) to process")
+    num_files_to_process = sum(1 for _ in files_to_process)
+    logger.info("Found " + str(num_files_to_process) + " file(s) to process")
 
-    if files_to_process > 0:
+    if num_files_to_process > 0:
         for s3_object in files_to_process:
             logger.info("Processing " + s3_object.key)
             __process_one_file(job_config, s3_object.key, last_upper_bound, new_upper_bound)
