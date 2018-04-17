@@ -76,7 +76,7 @@ def execute_query(connection_string, query, fetch_data=True):
 
 def __generate_copy_query(dest_table_name, s3_bucket, file_name, iam_role):
     s3_path = "\'s3://%s/%s\'" % (s3_bucket, file_name)
-    return "COPY %s FROM %s IAM_ROLE \'%s\' ACCEPTINVCHARS as ' ' FORMAT AS CSV IGNOREHEADER AS 1" % (dest_table_name, s3_path, iam_role)
+    return "COPY %s FROM %s IAM_ROLE \'%s\' ACCEPTINVCHARS as ' ' IGNOREBLANKLINES FORMAT AS CSV IGNOREHEADER AS 1" % (dest_table_name, s3_path, iam_role)
 
 
 def __generate_status_query(status_table_name, source_table_name):
