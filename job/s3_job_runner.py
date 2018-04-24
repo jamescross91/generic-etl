@@ -15,6 +15,31 @@ def run_s3_job(job_config):
     logger.info("Running setup statements if any")
     __execute_sql_statements(job_config.run_before, job_config.dest_connection_string)
 
+    if job_config.timestamp_col == "":
+        __process_non_incremental(job_config)
+    else:
+        __process_incremental_load(job_config)
+
+    logger.info("Running teardown statements if any")
+    __execute_sql_statements(job_config.run_after, job_config.dest_connection_string)
+
+    logger.info("################################### COMPLETE ###################################")
+
+
+def __process_non_incremental(job_config):
+    logger.info("Running load without incremental column")
+    files_to_process = __get_files_in_source_bucket(job_config)
+    num_files_to_process = sum(1 for _ in files_to_process)
+    logger.info("Found " + str(num_files_to_process) + " file(s) to process")
+
+    if num_files_to_process > 0:
+        for s3_object in files_to_process:
+            logger.info("Processing " + s3_object.key)
+            __process_one_file(job_config, s3_object.key)
+
+
+def __process_incremental_load(job_config):
+    logger.info("Running incremental load")
     last_upper_bound = get_last_upper_bound(job_config)
     new_upper_bound = datetime.datetime.now()
 
@@ -25,14 +50,9 @@ def run_s3_job(job_config):
     if num_files_to_process > 0:
         for s3_object in files_to_process:
             logger.info("Processing " + s3_object.key)
-            __process_one_file(job_config, s3_object.key, last_upper_bound, new_upper_bound)
+            __process_one_file_incremental(job_config, s3_object.key, last_upper_bound, new_upper_bound)
 
         update_upper_bound(job_config, new_upper_bound, is_first_run=last_upper_bound == 0)
-
-    logger.info("Running teardown statements if any")
-    __execute_sql_statements(job_config.run_after, job_config.dest_connection_string)
-
-    logger.info("################################### COMPLETE ###################################")
 
 
 def __execute_sql_statements(statements, connection_string):
@@ -40,7 +60,12 @@ def __execute_sql_statements(statements, connection_string):
         execute_query(connection_string, statement, fetch_data=False)
 
 
-def __process_one_file(job_config, filename, lower_bound, upper_bound):
+def __process_one_file(job_config, filename):
+    copy_to_redshift(job_config, job_config.dest_table_name, job_config.source_s3_bucket, filename)
+    __move_from_source_to_destination(job_config, filename)
+
+
+def __process_one_file_incremental(job_config, filename, lower_bound, upper_bound):
     drop_temp_table(job_config)
     temp_table_name = create_temp_table(job_config)
     copy_to_redshift(job_config, temp_table_name, job_config.source_s3_bucket, filename)
