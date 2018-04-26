@@ -4,7 +4,7 @@ DBNAME=segmentation
 
 BUCKET=fendix-mongo-bucket
 
-COLLECTION=`/bin/date +%Y%m`
+COLLECTION=`/bin/date -d yesterday +%Y%m`
 
 TEMP_DIR=/home/ec2-user
 
