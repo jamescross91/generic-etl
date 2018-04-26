@@ -32,12 +32,13 @@ def update_upper_bound(job_config, new_upper_bound, is_first_run=False):
 
 
 def copy_to_redshift(job_config, target_table, source_bucket, file_name):
-    if job_config.s3_copy_override == "":
-        query = __generate_copy_query(target_table, source_bucket, file_name,
-                                      job_config.redshift_role)
-    else:
+    if hasattr(job_config, 's3_copy_override') and job_config.s3_copy_override != "":
         query = __populate_override_copy_query(job_config.s3_copy_override, target_table, source_bucket, file_name,
                                                job_config.redshift_role)
+
+    else:
+        query = __generate_copy_query(target_table, source_bucket, file_name,
+                                      job_config.redshift_role)
 
     execute_query(job_config.dest_connection_string, query, fetch_data=False)
 
