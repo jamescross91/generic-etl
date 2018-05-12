@@ -45,15 +45,6 @@ def __process_one_file(job_config, filename):
     __move_from_source_to_destination(job_config, filename)
 
 
-def __process_one_file_incremental(job_config, filename, lower_bound, upper_bound):
-    drop_temp_table(job_config)
-    temp_table_name = create_temp_table(job_config)
-    copy_to_redshift(job_config, temp_table_name, job_config.source_s3_bucket, filename)
-    insert_from_temp_table(job_config, lower_bound, upper_bound)
-    drop_temp_table(job_config)
-    __move_from_source_to_destination(job_config, filename)
-
-
 def __move_from_source_to_destination(job_config, filename):
     logger.info("Moving " + filename + " from " + job_config.source_s3_bucket + " to " + job_config.dest_s3_bucket)
     s3 = boto3.resource('s3')
