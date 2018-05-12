@@ -24,7 +24,7 @@ def from_json(file_path):
 
     for s3_job in data['s3_jobs']:
         s3_jobs.append(S3JobConfig(s3_job['source_s3_bucket'], s3_job['dest_s3_bucket'], dest_connection_string,
-                                   s3_job['dest_table_name'], s3_job['timestamp_col'], status_table_name,
+                                   s3_job['dest_table_name'], status_table_name,
                                    redshift_role, s3_job['run_before'], s3_job['run_after'], s3_job['s3_copy_override']))
 
     for destination_sql_job in data['destination_sql_jobs']:
