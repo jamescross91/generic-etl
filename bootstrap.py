@@ -22,5 +22,7 @@ def run():
     for job_config in job_configs["destination_sql_jobs"]:
         run_sql_job(job_config)
 
+    logger.info("################################### JOB COMPLETE ###################################")
+
 
 run()
