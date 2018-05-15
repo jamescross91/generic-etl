@@ -36,12 +36,21 @@ def run_rds_job(job_config):
 def __retrieve_data(job_config, last_upper_bound, new_upper_bound):
     df = __read_from_source(job_config, last_upper_bound, new_upper_bound)
 
+    __run_transforms(job_config, df)
+
     for col in df.columns:
         df[col] = df[col].astype(unicode)
 
     records_to_process = len(df.index)
     logger.info("Received " + str(records_to_process) + " records to store in S3")
     return df, records_to_process
+
+
+def __run_transforms(job_config, df):
+    for transform in job_config.panda_transforms:
+        exec transform
+
+    return df
 
 
 def __to_s3(job_config, df, new_upper_bound):
