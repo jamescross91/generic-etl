@@ -1,5 +1,3 @@
-import boto3
-
 import log
 from config.config_parser import from_json
 from job.rds_job_runner import run_rds_job
