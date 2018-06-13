@@ -1,10 +1,8 @@
-import datetime
 import logging
 
 import boto3
 
-from job.redshift import get_last_upper_bound, create_temp_table, copy_to_redshift, insert_from_temp_table, \
-    drop_temp_table, update_upper_bound, execute_query
+from job.redshift import copy_to_redshift, execute_query
 
 logger = logging.getLogger('root')
 
